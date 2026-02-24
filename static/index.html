@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar Știință</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+  <style>
+    :root {
+      --primary: #1a3c6e;
+      --accent: #2563eb;
+      --accent-h: #1d4ed8;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --success: #16a34a;
+      --r: 12px;
+      --sh: 0 2px 16px rgba(0,0,0,0.07);
+      --sh-lg: 0 8px 40px rgba(0,0,0,0.18);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      position: sticky; top: 0; z-index: 50;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; white-space: nowrap; letter-spacing: -.4px; }
+    header h1 span { color: #93c5fd; }
+    .search-wrap { flex: 1; max-width: 420px; position: relative; }
+    #searchInput {
+      width: 100%; padding: .6rem 1rem .6rem 2.5rem;
+      border: none; border-radius: 8px;
+      background: rgba(255,255,255,.15); color: #fff;
+      font-size: .9rem; outline: none; transition: background .2s;
+    }
+    #searchInput::placeholder { color: rgba(255,255,255,.55); }
+    #searchInput:focus { background: rgba(255,255,255,.25); }
+    .search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); opacity: .65; pointer-events: none; }
+
+    /* ── Layout ── */
+    main {
+      max-width: 1380px; margin: 0 auto; padding: 1.75rem 2rem;
+      display: grid; grid-template-columns: 1fr 360px; gap: 1.75rem; align-items: start;
+    }
+
+    /* ── Calendar card ── */
+    .cal-card { background: var(--surface); border-radius: var(--r); box-shadow: var(--sh); padding: 1.25rem; }
+
+    /* FullCalendar overrides */
+    .fc-button-primary { background: var(--accent) !important; border-color: var(--accent) !important; }
+    .fc-button-primary:hover { background: var(--accent-h) !important; }
+    .fc-button-primary:not(:disabled).fc-button-active { background: var(--primary) !important; border-color: var(--primary) !important; }
+    .fc-event { cursor: pointer; }
+    .fc-daygrid-event { border-radius: 4px !important; }
+
+    /* ── Event list panel ── */
+    .list-panel { background: var(--surface); border-radius: var(--r); box-shadow: var(--sh); overflow: hidden; position: sticky; top: 5rem; }
+    .list-header { padding: .9rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .list-header h2 { font-size: .95rem; font-weight: 600; }
+    .ev-count { font-size: .78rem; background: var(--bg); color: var(--muted); padding: .2rem .65rem; border-radius: 20px; }
+    .event-list { max-height: 72vh; overflow-y: auto; }
+
+    .ev-item { padding: .9rem 1.25rem; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; gap: .9rem; align-items: flex-start; transition: background .15s; }
+    .ev-item:last-child { border-bottom: none; }
+    .ev-item:hover { background: var(--bg); }
+    .ev-badge { background: var(--primary); color: #fff; border-radius: 8px; padding: .35rem .55rem; text-align: center; min-width: 46px; flex-shrink: 0; }
+    .ev-badge .day { font-size: 1.15rem; font-weight: 700; line-height: 1; }
+    .ev-badge .mon { font-size: .62rem; text-transform: uppercase; opacity: .8; margin-top: 1px; }
+    .ev-info { flex: 1; min-width: 0; }
+    .ev-title { font-weight: 600; font-size: .875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ev-loc { font-size: .78rem; color: var(--muted); margin-top: .15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .empty-state { padding: 3rem 1.5rem; text-align: center; color: var(--muted); }
+    .empty-state svg { margin-bottom: .75rem; opacity: .35; }
+    .empty-state p { font-size: .9rem; }
+
+    /* ── Modals ── */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(3px); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--surface); border-radius: var(--r); box-shadow: var(--sh-lg); width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; animation: mIn .2s ease; }
+    .modal.wide { max-width: 940px; }
+    @keyframes mIn { from { opacity:0; transform: translateY(-14px) scale(.97); } to { opacity:1; transform:none; } }
+    .modal-head { padding: 1.4rem 1.5rem 1rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .modal-head h2 { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+    .modal-body { padding: 0 1.5rem 1.5rem; }
+    .btn-x { background: none; border: none; cursor: pointer; font-size: 1.6rem; line-height: 1; color: var(--muted); border-radius: 6px; padding: .1rem .3rem; transition: background .15s; }
+    .btn-x:hover { background: var(--bg); }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: .45rem; padding: .58rem 1.15rem; border-radius: 8px; font-size: .875rem; font-weight: 600; cursor: pointer; border: none; transition: all .15s; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-ghost { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-sm { padding: .38rem .8rem; font-size: .8rem; }
+
+    /* ── Forms ── */
+    .fg { margin-bottom: 1rem; }
+    label { display: block; font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .3rem; }
+    input[type=text], input[type=date], input[type=password], textarea {
+      width: 100%; padding: .62rem .875rem; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: .875rem; color: var(--text); background: var(--surface);
+      outline: none; transition: border-color .15s; font-family: inherit;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { min-height: 78px; resize: vertical; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* ── Event detail ── */
+    .det-date { display: inline-block; background: var(--primary); color: #fff; padding: .28rem .8rem; border-radius: 20px; font-size: .82rem; font-weight: 600; margin-bottom: 1rem; }
+    .det-desc { color: var(--muted); font-size: .9rem; line-height: 1.65; margin-bottom: 1rem; white-space: pre-line; }
+    .det-loc { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .85rem; margin-bottom: 1.5rem; }
+    .det-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; gap: .25rem; }
+    .tab { padding: .7rem 1.1rem; cursor: pointer; font-size: .875rem; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; border-radius: 6px 6px 0 0; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-color: var(--accent); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Upload area ── */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: var(--r);
+      padding: 2.5rem; text-align: center; cursor: pointer;
+      transition: border-color .2s, background .2s; margin-bottom: 1rem;
+    }
+    .drop-zone:hover, .drop-zone.over { border-color: var(--accent); background: #eff6ff; }
+    .drop-zone svg { opacity: .4; margin-bottom: .75rem; }
+    .drop-zone p { color: var(--muted); font-size: .875rem; }
+    .drop-zone strong { color: var(--accent); }
+    #fileInput { display: none; }
+
+    .spin-wrap { display: none; text-align: center; padding: 2rem; color: var(--muted); }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto .75rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Review table ── */
+    .rtbl-wrap { overflow-x: auto; margin-top: 1rem; }
+    .rtbl { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .rtbl th { background: var(--bg); padding: .55rem .7rem; text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    .rtbl td { padding: .45rem .45rem; border-top: 1px solid var(--border); vertical-align: middle; }
+    .rtbl input[type=text], .rtbl input[type=date] { padding: .3rem .5rem; font-size: .8rem; }
+    .rtbl input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+
+    /* ── Manage table ── */
+    .mtbl { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    .mtbl th { background: var(--bg); padding: .7rem 1rem; text-align: left; font-weight: 600; color: var(--muted); font-size: .75rem; text-transform: uppercase; }
+    .mtbl td { padding: .7rem 1rem; border-top: 1px solid var(--border); vertical-align: middle; }
+    .mtbl tr:hover td { background: var(--bg); }
+    .mtbl .actions { display: flex; gap: .4rem; white-space: nowrap; }
+
+    /* ── Raw text ── */
+    details { margin-bottom: 1rem; }
+    summary { cursor: pointer; font-size: .82rem; color: var(--muted); padding: .4rem 0; user-select: none; }
+    .raw-text { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: .75rem; font-family: monospace; font-size: .78rem; white-space: pre-wrap; max-height: 180px; overflow-y: auto; color: var(--muted); margin-top: .5rem; }
+
+    /* ── Admin FAB ── */
+    #fab { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--primary); color: #fff; border: none; border-radius: 50%; width: 52px; height: 52px; cursor: pointer; box-shadow: var(--sh-lg); display: flex; align-items: center; justify-content: center; transition: background .2s, transform .2s; z-index: 100; }
+    #fab:hover { background: var(--accent); transform: scale(1.06); }
+    #fab.active { background: var(--success); }
+
+    /* ── Toast ── */
+    #toast { position: fixed; bottom: 5.5rem; right: 1.5rem; background: var(--primary); color: #fff; padding: .7rem 1.2rem; border-radius: 10px; font-size: .875rem; font-weight: 500; box-shadow: var(--sh-lg); z-index: 999; opacity: 0; transform: translateY(8px); transition: all .25s; pointer-events: none; }
+    #toast.show { opacity: 1; transform: none; }
+    #toast.err { background: var(--danger); }
+    #toast.ok { background: var(--success); }
+
+    /* ── Edit inline modal ── */
+    #editModal .modal { max-width: 560px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 880px) {
+      main { grid-template-columns: 1fr; padding: 1rem; }
+      .list-panel { position: static; }
+      header { padding: .9rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Calendar <span>Știință</span></h1>
+  <div class="search-wrap">
+    <svg class="search-icon" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="Caută eveniment...">
+  </div>
+</header>
+
+<main>
+  <!-- Calendar -->
+  <div class="cal-card">
+    <div id="calendar"></div>
+  </div>
+
+  <!-- Event list -->
+  <aside class="list-panel">
+    <div class="list-header">
+      <h2>Evenimente</h2>
+      <span class="ev-count" id="evCount">0</span>
+    </div>
+    <div class="event-list" id="eventList"></div>
+  </aside>
+</main>
+
+<!-- ══ Event detail modal ══ -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="detTitle"></h2>
+      <button class="btn-x" onclick="closeOverlay('detailOverlay')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="det-date" id="detDate"></div>
+      <p class="det-desc" id="detDesc"></p>
+      <div class="det-loc" id="detLoc"></div>
+      <div class="det-actions">
+        <button class="btn btn-primary" id="detExport">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Adaugă în calendar (.ics)
+        </button>
+        <button class="btn btn-ghost" onclick="closeOverlay('detailOverlay')">Închide</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Login modal ══ -->
+<div class="overlay" id="loginOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Autentificare Admin</h2>
+      <button class="btn-x" onclick="closeOverlay('loginOverlay')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label>Parolă</label>
+        <input type="password" id="pwInput" placeholder="Introduceți parola..." onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Intră</button>
+      <p id="loginErr" style="color:var(--danger);font-size:.85rem;margin-top:.6rem;display:none">Parolă incorectă.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Admin panel modal ══ -->
+<div class="overlay" id="adminOverlay">
+  <div class="modal wide">
+    <div class="modal-head">
+      <h2>Panou Admin</h2>
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="doLogout()">Deconectare</button>
+        <button class="btn-x" onclick="closeOverlay('adminOverlay')">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <div class="tab active" data-tab="upload">Încarcă poster</div>
+        <div class="tab" data-tab="add">Adaugă manual</div>
+        <div class="tab" data-tab="manage">Gestionare</div>
+      </div>
+
+      <!-- Tab: Upload -->
+      <div class="tab-pane active" id="tab-upload">
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+          <div class="fg" style="margin:0;flex:1">
+            <label>Tip poster</label>
+            <select id="posterType" style="width:100%;padding:.62rem .875rem;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;color:var(--text);background:var(--surface);outline:none">
+              <option value="auto">Detectare automată</option>
+              <option value="grid">Calendar anual (grilă 6×2)</option>
+              <option value="simple">Poster simplu (date scrise complet)</option>
+            </select>
+          </div>
+          <div class="fg" style="margin:0;width:110px">
+            <label>An calendar</label>
+            <input type="number" id="posterYear" min="2020" max="2040" placeholder="ex: 2026" style="padding:.62rem .875rem;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;color:var(--text);background:var(--surface);outline:none;width:100%">
+          </div>
+        </div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" accept=".jpg,.jpeg,.png" onchange="onFileSelected(this.files[0])">
+          <svg width="52" height="52" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p><strong>Click sau trage</strong> un poster JPG/PNG</p>
+          <p style="margin-top:.3rem;font-size:.8rem">OCR va detecta automat datele calendaristice</p>
+        </div>
+        <div class="spin-wrap" id="ocrSpin">
+          <div class="spinner"></div>
+          <p>Se procesează imaginea cu OCR…</p>
+        </div>
+      </div>
+
+      <!-- Tab: Add manually -->
+      <div class="tab-pane" id="tab-add">
+        <div class="fg">
+          <label>Titlu eveniment *</label>
+          <input type="text" id="mTitle" placeholder="ex: Conferință de Astronomie 2025">
+        </div>
+        <div class="grid2">
+          <div class="fg">
+            <label>Data start *</label>
+            <input type="date" id="mDate">
+          </div>
+          <div class="fg">
+            <label>Data sfârșit</label>
+            <input type="date" id="mEnd">
+          </div>
+        </div>
+        <div class="fg">
+          <label>Locație</label>
+          <input type="text" id="mLoc" placeholder="ex: București, Palatul Parlamentului">
+        </div>
+        <div class="fg">
+          <label>Descriere</label>
+          <textarea id="mDesc" placeholder="Descriere opțională…"></textarea>
+        </div>
+        <div style="display:flex;gap:.75rem">
+          <button class="btn btn-primary" id="addBtn" onclick="addManual()">Adaugă eveniment</button>
+          <button class="btn btn-ghost" id="cancelEditBtn" style="display:none" onclick="resetManualForm()">Anulează editarea</button>
+        </div>
+      </div>
+
+      <!-- Tab: Manage -->
+      <div class="tab-pane" id="tab-manage">
+        <div id="manageContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OCR Review modal ══ -->
+<div class="overlay" id="reviewOverlay">
+  <div class="modal wide">
+    <div class="modal-head">
+      <h2>Revizuiți evenimentele extrase</h2>
+      <button class="btn-x" onclick="closeOverlay('reviewOverlay')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="reviewRaw"></div>
+      <div id="reviewBody"></div>
+      <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="closeOverlay('reviewOverlay')">Anulează</button>
+        <button class="btn btn-primary" onclick="publishSelected()">Publică selectate</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FAB (admin trigger) ══ -->
+<button id="fab" onclick="openAdminPanel()" title="Panou Admin">
+  <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <rect x="3" y="11" width="18" height="11" rx="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+</button>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+const S = {
+  events: [],
+  extracted: [],
+  editingId: null,
+  adminPw: localStorage.getItem('sc_pw') || '',
+  isAdmin: false,
+  viewStart: null,
+  viewEnd: null,
+  query: '',
+};
+
+let calendar;
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadEvents();
+  initCalendar();
+  renderList();
+  initSearch();
+  initDrop();
+  initTabs();
+  initOverlayClose();
+
+  if (S.adminPw) {
+    try {
+      await api('POST', '/admin/verify');
+      S.isAdmin = true;
+      document.getElementById('fab').classList.add('active');
+    } catch {
+      S.adminPw = '';
+      localStorage.removeItem('sc_pw');
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   API
+═══════════════════════════════════════════════════ */
+async function api(method, path, body = null, upload = false) {
+  const headers = {};
+  if (S.adminPw) headers['X-Admin-Password'] = S.adminPw;
+
+  const opts = { method, headers };
+  if (body && !upload) {
+    headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (upload) {
+    opts.body = body; // FormData
+  }
+
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Eroare necunoscută' }));
+    throw new Error(err.detail || 'Eroare');
+  }
+  return res.json();
+}
+
+async function loadEvents() {
+  try { S.events = await api('GET', '/events'); }
+  catch { toast('Eroare la încărcarea evenimentelor', 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   CALENDAR
+═══════════════════════════════════════════════════ */
+function initCalendar() {
+  calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    initialView: window.innerWidth < 600 ? 'listMonth' : 'dayGridMonth',
+    locale: 'ro',
+    height: 'auto',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,listMonth',
+    },
+    events: toFC(S.events),
+    eventClick: info => openDetail(info.event.extendedProps),
+    datesSet: info => {
+      S.viewStart = info.start;
+      S.viewEnd = info.end;
+      renderList();
+    },
+  });
+  calendar.render();
+}
+
+function toFC(events) {
+  return events.map(e => ({
+    id: e.id,
+    title: e.title,
+    start: e.date,
+    end: e.end_date || e.date,
+    extendedProps: e,
+    backgroundColor: '#1a3c6e',
+    borderColor: '#1a3c6e',
+  }));
+}
+
+function refreshCalendar() {
+  calendar.removeAllEvents();
+  calendar.addEventSource(toFC(S.events));
+}
+
+/* ═══════════════════════════════════════════════════
+   EVENT LIST
+═══════════════════════════════════════════════════ */
+function renderList() {
+  const q = S.query.toLowerCase();
+
+  let items = S.events.filter(e => {
+    const matchQ = !q ||
+      e.title.toLowerCase().includes(q) ||
+      (e.description || '').toLowerCase().includes(q) ||
+      (e.location || '').toLowerCase().includes(q);
+
+    const matchDate = q || !S.viewStart ||
+      (new Date(e.date) >= S.viewStart && new Date(e.date) < S.viewEnd);
+
+    return matchQ && matchDate;
+  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  document.getElementById('evCount').textContent = items.length;
+  const el = document.getElementById('eventList');
+
+  if (!items.length) {
+    el.innerHTML = `<div class="empty-state">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+      </svg>
+      <p>${q ? `Niciun rezultat pentru „${esc(q)}"` : 'Niciun eveniment în această perioadă'}</p>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = items.map(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    const day = d.getDate();
+    const mon = d.toLocaleDateString('ro-RO', { month: 'short' }).replace('.', '');
+    return `<div class="ev-item" data-id="${e.id}">
+      <div class="ev-badge"><div class="day">${day}</div><div class="mon">${mon}</div></div>
+      <div class="ev-info">
+        <div class="ev-title">${esc(e.title)}</div>
+        <div class="ev-loc">${e.location ? '📍 ' + esc(e.location) : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.ev-item').forEach(row => {
+    row.addEventListener('click', () => {
+      const ev = S.events.find(e => e.id === row.dataset.id);
+      if (ev) openDetail(ev);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════════════════ */
+function initSearch() {
+  document.getElementById('searchInput').addEventListener('input', e => {
+    S.query = e.target.value.trim();
+    renderList();
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   EVENT DETAIL MODAL
+═══════════════════════════════════════════════════ */
+function openDetail(ev) {
+  document.getElementById('detTitle').textContent = ev.title;
+
+  const start = fmtDate(ev.date);
+  const end = ev.end_date && ev.end_date !== ev.date ? ' — ' + fmtDate(ev.end_date) : '';
+  document.getElementById('detDate').textContent = start + end;
+
+  const desc = ev.description || '';
+  const descEl = document.getElementById('detDesc');
+  descEl.textContent = desc;
+  descEl.style.display = desc ? '' : 'none';
+
+  const locEl = document.getElementById('detLoc');
+  if (ev.location) {
+    locEl.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${esc(ev.location)}`;
+    locEl.style.display = 'flex';
+  } else {
+    locEl.style.display = 'none';
+  }
+
+  document.getElementById('detExport').onclick = () => {
+    window.location.href = `/events/${ev.id}/export`;
+  };
+
+  openOverlay('detailOverlay');
+}
+
+/* ═══════════════════════════════════════════════════
+   ADMIN AUTH
+═══════════════════════════════════════════════════ */
+function openAdminPanel() {
+  if (S.isAdmin) {
+    renderManage();
+    openOverlay('adminOverlay');
+  } else {
+    document.getElementById('pwInput').value = '';
+    document.getElementById('loginErr').style.display = 'none';
+    openOverlay('loginOverlay');
+  }
+}
+
+async function doLogin() {
+  const pw = document.getElementById('pwInput').value;
+  if (!pw) return;
+  S.adminPw = pw;
+  try {
+    await api('POST', '/admin/verify');
+    S.isAdmin = true;
+    localStorage.setItem('sc_pw', pw);
+    document.getElementById('fab').classList.add('active');
+    closeOverlay('loginOverlay');
+    renderManage();
+    openOverlay('adminOverlay');
+  } catch {
+    S.adminPw = '';
+    document.getElementById('loginErr').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  S.isAdmin = false;
+  S.adminPw = '';
+  localStorage.removeItem('sc_pw');
+  document.getElementById('fab').classList.remove('active');
+  closeOverlay('adminOverlay');
+  toast('Deconectat cu succes');
+}
+
+/* ═══════════════════════════════════════════════════
+   DRAG & DROP UPLOAD
+═══════════════════════════════════════════════════ */
+function initDrop() {
+  const zone = document.getElementById('dropZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f) onFileSelected(f);
+  });
+}
+
+async function onFileSelected(file) {
+  if (!file) return;
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('ocrSpin').style.display = 'block';
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const yr = document.getElementById('posterYear').value.trim();
+    if (yr) fd.append('year', yr);
+    const data = await api('POST', '/admin/upload', fd, true);
+    showReview(data.raw_text, data.events);
+  } catch (e) {
+    toast('Eroare OCR: ' + e.message, 'err');
+  } finally {
+    document.getElementById('ocrSpin').style.display = 'none';
+    document.getElementById('dropZone').style.display = '';
+    document.getElementById('fileInput').value = '';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   REVIEW MODAL
+═══════════════════════════════════════════════════ */
+function showReview(rawText, events) {
+  S.extracted = events;
+
+  document.getElementById('reviewRaw').innerHTML = `
+    <details>
+      <summary>Text extras brut (${rawText.split('\n').filter(l => l.trim()).length} linii)</summary>
+      <div class="raw-text">${esc(rawText)}</div>
+    </details>`;
+
+  if (!events.length) {
+    document.getElementById('reviewBody').innerHTML = `
+      <div style="text-align:center;padding:2rem;color:var(--muted)">
+        <p>Nu s-au detectat date calendaristice în imagine.</p>
+        <p style="margin-top:.5rem;font-size:.85rem">Verificați textul brut de mai sus sau adăugați evenimentele manual.</p>
+      </div>`;
+  } else {
+    document.getElementById('reviewBody').innerHTML = `
+      <p style="font-size:.875rem;color:var(--muted);margin-bottom:1rem">
+        <strong>${events.length}</strong> eveniment(e) detectat(e). Editați și bifați ce doriți să publicați.
+      </p>
+      <div class="rtbl-wrap">
+        <table class="rtbl">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="chkAll" title="Selectează toate" onchange="toggleAllChecks(this.checked)"></th>
+              <th>Titlu</th>
+              <th>Data start</th>
+              <th>Data sfârșit</th>
+              <th>Locație</th>
+              <th>Descriere</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${events.map((e, i) => `
+              <tr>
+                <td><input type="checkbox" class="ev-chk" data-i="${i}" checked></td>
+                <td><input type="text" value="${escAttr(e.title)}" oninput="S.extracted[${i}].title=this.value" style="min-width:180px"></td>
+                <td><input type="date" value="${e.date}" oninput="S.extracted[${i}].date=this.value"></td>
+                <td><input type="date" value="${e.end_date||''}" oninput="S.extracted[${i}].end_date=this.value"></td>
+                <td><input type="text" value="${escAttr(e.location||'')}" oninput="S.extracted[${i}].location=this.value" style="min-width:120px"></td>
+                <td><input type="text" value="${escAttr(e.description||'')}" oninput="S.extracted[${i}].description=this.value" style="min-width:160px"></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  openOverlay('reviewOverlay');
+}
+
+function toggleAllChecks(checked) {
+  document.querySelectorAll('.ev-chk').forEach(c => c.checked = checked);
+}
+
+async function publishSelected() {
+  const checks = [...document.querySelectorAll('.ev-chk')];
+  const toPublish = checks.filter(c => c.checked).map(c => S.extracted[+c.dataset.i]);
+
+  if (!toPublish.length) { toast('Niciun eveniment bifat', 'err'); return; }
+
+  let n = 0;
+  for (const e of toPublish) {
+    try {
+      const created = await api('POST', '/admin/events', e);
+      S.events.push(created);
+      n++;
+    } catch (err) {
+      toast(`Eroare: ${err.message}`, 'err');
+    }
+  }
+
+  if (n) {
+    refreshCalendar();
+    renderList();
+    toast(`${n} eveniment(e) publicate!`, 'ok');
+    closeOverlay('reviewOverlay');
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MANUAL ADD / EDIT
+═══════════════════════════════════════════════════ */
+function resetManualForm() {
+  S.editingId = null;
+  ['mTitle','mLoc','mDesc'].forEach(id => document.getElementById(id).value = '');
+  ['mDate','mEnd'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('addBtn').textContent = 'Adaugă eveniment';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+async function addManual() {
+  const title = document.getElementById('mTitle').value.trim();
+  const date  = document.getElementById('mDate').value;
+  if (!title || !date) { toast('Titlul și data sunt obligatorii', 'err'); return; }
+
+  const body = {
+    title, date,
+    end_date:    document.getElementById('mEnd').value,
+    location:    document.getElementById('mLoc').value.trim(),
+    description: document.getElementById('mDesc').value.trim(),
+  };
+
+  try {
+    if (S.editingId) {
+      const updated = await api('PUT', `/admin/events/${S.editingId}`, body);
+      S.events = S.events.map(e => e.id === S.editingId ? updated : e);
+      toast('Eveniment actualizat!', 'ok');
+    } else {
+      const created = await api('POST', '/admin/events', body);
+      S.events.push(created);
+      toast('Eveniment adăugat!', 'ok');
+    }
+    refreshCalendar();
+    renderList();
+    renderManage();
+    resetManualForm();
+    activateTab('manage');
+  } catch (e) {
+    toast('Eroare: ' + e.message, 'err');
+  }
+}
+
+function startEdit(id) {
+  const ev = S.events.find(e => e.id === id);
+  if (!ev) return;
+  S.editingId = id;
+  document.getElementById('mTitle').value = ev.title;
+  document.getElementById('mDate').value  = ev.date;
+  document.getElementById('mEnd').value   = ev.end_date || '';
+  document.getElementById('mLoc').value   = ev.location || '';
+  document.getElementById('mDesc').value  = ev.description || '';
+  document.getElementById('addBtn').textContent = 'Salvează modificările';
+  document.getElementById('cancelEditBtn').style.display = '';
+  activateTab('add');
+}
+
+async function deleteEvent(id) {
+  if (!confirm('Ștergi acest eveniment definitiv?')) return;
+  try {
+    await api('DELETE', `/admin/events/${id}`);
+    S.events = S.events.filter(e => e.id !== id);
+    refreshCalendar();
+    renderList();
+    renderManage();
+    toast('Eveniment șters', 'ok');
+  } catch (e) {
+    toast('Eroare: ' + e.message, 'err');
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MANAGE TAB
+═══════════════════════════════════════════════════ */
+function renderManage() {
+  const el = document.getElementById('manageContent');
+  if (!S.events.length) {
+    el.innerHTML = `<div class="empty-state"><p>Niciun eveniment publicat încă.</p></div>`;
+    return;
+  }
+  const sorted = [...S.events].sort((a, b) => new Date(a.date) - new Date(b.date));
+  el.innerHTML = `
+    <table class="mtbl">
+      <thead>
+        <tr><th>Titlu</th><th>Dată</th><th>Locație</th><th>Acțiuni</th></tr>
+      </thead>
+      <tbody>
+        ${sorted.map(e => `
+          <tr>
+            <td>${esc(e.title)}</td>
+            <td style="white-space:nowrap">${fmtDate(e.date)}${e.end_date && e.end_date !== e.date ? ' → ' + fmtDate(e.end_date) : ''}</td>
+            <td>${esc(e.location || '—')}</td>
+            <td><div class="actions">
+              <button class="btn btn-ghost btn-sm" onclick="startEdit('${e.id}')">Editează</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}')">Șterge</button>
+            </div></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════════ */
+function initTabs() {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      activateTab(t.dataset.tab);
+      if (t.dataset.tab === 'manage') renderManage();
+    });
+  });
+}
+
+function activateTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+}
+
+/* ═══════════════════════════════════════════════════
+   OVERLAYS
+═══════════════════════════════════════════════════ */
+function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+
+function initOverlayClose() {
+  document.querySelectorAll('.overlay').forEach(ov => {
+    ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('open'); });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════ */
+let _t;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(_t);
+  _t = setTimeout(() => el.className = '', 3200);
+}
+
+/* ═══════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════ */
+function fmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s + 'T00:00:00');
+  return d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function escAttr(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+</script>
+</body>
+</html>
