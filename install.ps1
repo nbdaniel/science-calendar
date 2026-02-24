@@ -147,7 +147,7 @@ if (Test-Path $envFile) {
     if (-not $pw) { $pw = "admin123" }
 
     $envContent = "ADMIN_PASSWORD=$pw`r`nTESSERACT_PATH=$tessExe`r`n"
-    [System.IO.File]::WriteAllText($envFile, $envContent, [System.Text.Encoding]::UTF8)
+    [System.IO.File]::WriteAllText($envFile, $envContent, [System.Text.UTF8Encoding]::new($false))
     Write-OK ".env creat."
 }
 
