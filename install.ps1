@@ -146,11 +146,8 @@ if (Test-Path $envFile) {
     $pw = Read-Host "  Parola admin (Enter pentru 'admin123')"
     if (-not $pw) { $pw = "admin123" }
 
-    $tessPath = $tessExe -replace "\\", "\\"
-    @"
-ADMIN_PASSWORD=$pw
-TESSERACT_PATH=$tessPath
-"@ | Set-Content -Path $envFile -Encoding UTF8
+    $envContent = "ADMIN_PASSWORD=$pw`r`nTESSERACT_PATH=$tessExe`r`n"
+    [System.IO.File]::WriteAllText($envFile, $envContent, [System.Text.Encoding]::UTF8)
     Write-OK ".env creat."
 }
 
